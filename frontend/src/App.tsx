@@ -47,6 +47,7 @@ export default function App() {
   const [airports, setAirports] = useState<Airport[]>([])
   const [incidents, setIncidents] = useState<Incident[]>([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [flightSearch, setFlightSearch] = useState('')
   const [airportSearch, setAirportSearch] = useState('')
   const [liveCount, setLiveCount] = useState(0)
@@ -57,61 +58,74 @@ export default function App() {
     if (tab !== 'flights') return
     let cancelled = false
     ;(async () => {
+      setError(null)
       setLoading(true)
       try {
         const r = await fetch(`${API}/api/flights`)
+        if (!r.ok) throw new Error(`Flights API error: ${r.status}`)
         const d = await r.json()
         if (!cancelled) {
           setFlights(d.flights || [])
           setLiveCount(d.total || 0)
           setLastUpdated(new Date().toLocaleTimeString())
         }
-      } catch { /* ignore */ } finally { if (!cancelled) setLoading(false) }
+      } catch (err: unknown) { if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to fetch flights') }
+      finally { if (!cancelled) setLoading(false) }
     })()
     const id = setInterval(async () => {
       try {
         const r = await fetch(`${API}/api/flights`)
+        if (!r.ok) throw new Error(`Poll error: ${r.status}`)
         const d = await r.json()
         if (!cancelled) {
           setFlights(d.flights || [])
           setLiveCount(d.total || 0)
           setLastUpdated(new Date().toLocaleTimeString())
         }
-      } catch { /* ignore */ }
+      } catch (err: unknown) { if (!cancelled) setError(err instanceof Error ? err.message : 'Poll failed') }
     }, 30000)
     return () => { cancelled = true; clearInterval(id) }
   }, [tab])
 
   const searchFlights = async () => {
     if (!flightSearch) return
+    setError(null)
     setLoading(true)
     try {
       const r = await fetch(`${API}/api/flights/search?q=${encodeURIComponent(flightSearch)}`)
+      if (!r.ok) throw new Error(`Search failed: ${r.status}`)
       const d = await r.json()
       setFlights(d.results || [])
-    } finally { setLoading(false) }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Search failed') }
+    finally { setLoading(false) }
   }
 
   const loadAirports = async () => {
+    setError(null)
     setLoading(true)
     try {
       const url = airportSearch
         ? `${API}/api/airports?q=${encodeURIComponent(airportSearch)}`
         : `${API}/api/airports?limit=30`
       const r = await fetch(url)
+      if (!r.ok) throw new Error(`Airports error: ${r.status}`)
       const d = await r.json()
       setAirports(d.airports || [])
-    } finally { setLoading(false) }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to load airports') }
+    finally { setLoading(false) }
   }
 
   const loadIncidents = async () => {
     if (tab !== 'incidents') return
+    setError(null)
     setLoading(true)
     try {
       const r = await fetch(`${API}/api/incidents`)
+      if (!r.ok) throw new Error(`Incidents error: ${r.status}`)
       const d = await r.json()
       setIncidents(d.incidents || [])
-    } finally { setLoading(false) }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to load incidents') }
+    finally { setLoading(false) }
   }
 
   useEffect(() => { if (tab === 'airports') loadAirports() }, [tab, airportSearch])
@@ -201,8 +215,20 @@ export default function App() {
           </div>
         )}
 
-        {/* Loading */}
-        {loading && <div className="text-center py-12 text-slate-400">Loading...</div>}
+        {/* Error */}
+        {error && (
+          <div className="mb-6 bg-red-900/50 border border-red-700 rounded-xl px-5 py-3 text-red-300 text-sm">
+            <strong>Error:</strong> {error} <button onClick={() => setError(null)} className="ml-4 underline">Dismiss</button>
+          </div>
+        )}
+
+        {/* Loading Spinner */}
+        {loading && (
+          <div className="mb-6 flex items-center justify-center py-8 gap-3">
+            <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-slate-400 text-sm">Loading...</span>
+          </div>
+        )}
 
         {/* Flights Table */}
         {!loading && tab === 'flights' && (
