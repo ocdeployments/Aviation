@@ -248,7 +248,9 @@ export default function App() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (tab === 'airports') loadAirports() }, [tab, airportSearch])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (tab === 'incidents') loadIncidents() }, [tab])
 
   const tabs: Array<{ id: Tab; label: string }> = [

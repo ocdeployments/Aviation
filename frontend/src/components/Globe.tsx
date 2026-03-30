@@ -25,7 +25,6 @@ const MAJOR_AIRPORTS: Array<{ code: string; lat: number; lng: number; city: stri
   { code: 'EWR', lat: 40.6895, lng: -74.1745, city: 'Newark' },
 ]
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GlobeEl = any
 
 const ARC_COLOR_HIGH = () => new THREE.Color('#06b6d4')
@@ -210,7 +209,6 @@ export default function GlobeView() {
           pointAltitude={0.008}
           pointRadius={0.4}
           pointColor={() => DOT_COLOR().getStyle()}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           pointLabel={flightLabel as any}
 
           // Arc routes
