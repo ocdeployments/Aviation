@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Globe from './components/Globe'
 import DepartureBoard from './components/DepartureBoard'
+import AirportDetail from './components/AirportDetail'
 
 
 const SUPABASE_URL = 'https://stxanozxvkerwfvbruzr.supabase.co'
@@ -139,6 +140,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [flightSearch, setFlightSearch] = useState('')
   const [airportSearch, setAirportSearch] = useState('')
+  const [selectedAirport, setSelectedAirport] = useState<Airport | null>(null)
   const [liveCount, setLiveCount] = useState(0)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
@@ -249,7 +251,7 @@ export default function App() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (tab === 'airports') loadAirports() }, [tab, airportSearch])
+  useEffect(() => { if (tab === 'airports') { setSelectedAirport(null); loadAirports() } }, [tab, airportSearch])
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (tab === 'incidents') loadIncidents() }, [tab])
 
@@ -416,79 +418,102 @@ export default function App() {
             {/* ── Airports Tab ─────────────────────── */}
             {tab === 'airports' && (
               <PageWrapper keyValue="airports">
-                <div className="mb-6 flex gap-3">
-                  <input
-                    value={airportSearch}
-                    onChange={e => setAirportSearch(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && loadAirports()}
-                    placeholder="Search airports..."
-                    className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors premium-card"
-                  />
-                  <motion.button
-                    onClick={loadAirports}
-                    className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg font-medium transition-colors premium-card"
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    Search
-                  </motion.button>
-                </div>
+                <AnimatePresence mode="wait">
+                  {selectedAirport ? (
+                    <AirportDetail
+                      key={selectedAirport.ident}
+                      airport={selectedAirport}
+                      onClose={() => setSelectedAirport(null)}
+                    />
+                  ) : (
+                    <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                      {/* Search */}
+                      <div className="mb-6 flex gap-3">
+                        <input
+                          value={airportSearch}
+                          onChange={e => setAirportSearch(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && loadAirports()}
+                          placeholder="Search any airport — e.g. LHR, JFK, DEL, CDG, SIN..."
+                          className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors premium-card"
+                        />
+                        <motion.button
+                          onClick={loadAirports}
+                          className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-lg font-medium transition-colors premium-card"
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                        >
+                          Search
+                        </motion.button>
+                      </div>
 
-                {error && (
-                  <div className="mb-6 bg-red-900/40 border border-red-700/50 rounded-xl px-5 py-3 flex items-center gap-3">
-                    <div className="radar-sweep flex-shrink-0" />
-                    <div className="text-red-300 text-sm flex-1">{error}</div>
-                    <button onClick={() => setError(null)} className="text-red-400 text-sm hover:text-red-300 ml-auto">✕</button>
-                  </div>
-                )}
+                      {error && (
+                        <div className="mb-6 bg-red-900/40 border border-red-700/50 rounded-xl px-5 py-3 flex items-center gap-3">
+                          <div className="radar-sweep flex-shrink-0" />
+                          <div className="text-red-300 text-sm flex-1">{error}</div>
+                          <button onClick={() => setError(null)} className="text-red-400 text-sm hover:text-red-300 ml-auto">✕</button>
+                        </div>
+                      )}
 
-                {loading && (
-                  <div className="mb-6 flex items-center justify-center py-8 gap-3">
-                    <div className="airplane-loader" />
-                    <span className="text-slate-400 text-sm font-mono">Scanning database...</span>
-                  </div>
-                )}
+                      {loading && (
+                        <div className="flex items-center justify-center py-8 gap-3">
+                          <div className="airplane-loader" />
+                          <span className="text-slate-400 text-sm font-mono">Scanning 58,000 airports...</span>
+                        </div>
+                      )}
 
-                {!loading && (
-                  <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden premium-card">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-slate-700/80 text-slate-300">
-                          <tr>
-                            <th className="text-left px-4 py-3 font-semibold">Ident</th>
-                            <th className="text-left px-4 py-3 font-semibold">Type</th>
-                            <th className="text-left px-4 py-3 font-semibold">Name</th>
-                            <th className="text-left px-4 py-3 font-semibold">Location</th>
-                            <th className="text-right px-4 py-3 font-semibold">Elevation</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-700/60">
-                          {airports.length === 0 && (
-                            <tr>
-                              <td colSpan={5} className="px-4 py-8 text-center text-slate-500">No airports found</td>
-                            </tr>
-                          )}
-                          {airports.map((a) => (
-                            <motion.tr
-                              key={a.id}
-                              className="hover:bg-slate-700/40 transition-colors"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                            >
-                              <td className="px-4 py-3 font-mono font-bold text-green-300">{a.ident}</td>
-                              <td className="px-4 py-3">
-                                <span className="bg-slate-700 px-2 py-0.5 rounded text-xs text-slate-300">{a.type}</span>
-                              </td>
-                              <td className="px-4 py-3 text-slate-200">{a.name}</td>
-                              <td className="px-4 py-3 text-slate-400">{a.municipality}, {a.country}</td>
-                              <td className="px-4 py-3 text-right font-mono text-slate-300">{a.elevation_ft ?? '—'} ft</td>
-                            </motion.tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
+                      {!loading && airports.length > 0 && (
+                        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden premium-card">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-slate-700/80 text-slate-300">
+                                <tr>
+                                  <th className="text-left px-4 py-3 font-semibold">Ident</th>
+                                  <th className="text-left px-4 py-3 font-semibold">Type</th>
+                                  <th className="text-left px-4 py-3 font-semibold">Name</th>
+                                  <th className="text-left px-4 py-3 font-semibold">Location</th>
+                                  <th className="text-right px-4 py-3 font-semibold">Elevation</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-700/60">
+                                {airports.map((a) => (
+                                  <motion.tr
+                                    key={a.id}
+                                    onClick={() => setSelectedAirport(a)}
+                                    className="hover:bg-slate-700/40 transition-colors cursor-pointer"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                  >
+                                    <td className="px-4 py-3 font-mono font-bold text-green-300">{a.ident}</td>
+                                    <td className="px-4 py-3">
+                                      <span className="bg-slate-700 px-2 py-0.5 rounded text-xs text-slate-300">{a.type}</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-200">{a.name}</td>
+                                    <td className="px-4 py-3 text-slate-400">{a.municipality}, {a.country}</td>
+                                    <td className="px-4 py-3 text-right font-mono text-slate-300">{a.elevation_ft ?? '—'} ft</td>
+                                  </motion.tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {!loading && airports.length === 0 && airportSearch && (
+                        <div className="text-center py-12 text-slate-500">
+                          No airports found for "{airportSearch}"
+                        </div>
+                      )}
+
+                      {!loading && airports.length === 0 && !airportSearch && (
+                        <div className="text-center py-12">
+                          <div className="text-4xl mb-3">🛬</div>
+                          <p className="text-slate-400 mb-1">58,000 airports worldwide</p>
+                          <p className="text-slate-600 text-sm">Search above to explore any airport</p>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </PageWrapper>
             )}
 
