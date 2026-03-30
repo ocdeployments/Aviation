@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const SUPABASE_URL = 'https://stxanozxvkerwfvbruzr.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0eGFub3p4dmtlcndmdmJydXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODQzMzMsImV4cCI6MjA5MDQ2MDMzM30.Re9XtQo5SoeqJIOxjXiomDsXXLR19qGQmiXYUAH3PBc'
+const OPENSKY_API = `${SUPABASE_URL}/functions/v1/flights`
 
 interface RawFlight {
   callsign: string
@@ -119,7 +121,13 @@ export default function DepartureBoard() {
 
   const fetchBoardData = async () => {
     try {
-      const r = await fetch(`${API}/api/flights`)
+      const r = await fetch(OPENSKY_API, {
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        }
+      })
       if (!r.ok) return
       const d = await r.json()
       const raw = (d.flights || []) as RawFlight[]

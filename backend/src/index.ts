@@ -14,6 +14,19 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 app.use(cors())
 app.use(express.json())
 
+// ─── OpenSky Response Cache (30s TTL to avoid rate limiting) ─────────────
+interface CacheEntry { data: unknown; expires: number }
+const cache = new Map<string, CacheEntry>()
+function getCached(key: string): unknown | null {
+  const entry = cache.get(key)
+  if (!entry) return null
+  if (Date.now() > entry.expires) { cache.delete(key); return null }
+  return entry.data
+}
+function setCache(key: string, data: unknown, ttlMs = 30_000) {
+  cache.set(key, { data, expires: Date.now() + ttlMs })
+}
+
 // ─── Health ────────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
@@ -35,6 +48,11 @@ app.get('/api/flights', async (req, res) => {
       const lomax = Number(lon) + lonOffset
       url = `https://opensky-network.org/api/states/all?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`
     }
+
+    // Use cache key based on whether bbox or full fetch
+    const cacheKey = lat && lon && dist_km ? `flights:${lat}:${lon}:${dist_km}` : 'flights:all'
+    const cached = getCached(cacheKey)
+    if (cached) { res.json(cached); return }
 
     const response = await fetch(url, {
       headers: { 'User-Agent': 'AviationHub/1.0 (educational)' }
@@ -76,7 +94,9 @@ app.get('/api/flights', async (req, res) => {
       })
       .filter(f => f.callsign.length > 3)
 
-    res.json({ total: flights.length, flights: flights.slice(0, 100) })
+    const result = { total: flights.length, flights: flights.slice(0, 100) }
+    setCache(cacheKey, result)
+    res.json(result)
   } catch (err) {
     console.error('Flights error:', err)
     res.status(500).json({ error: 'Failed to fetch flights' })

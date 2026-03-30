@@ -4,6 +4,9 @@ import Globe from './components/Globe'
 import DepartureBoard from './components/DepartureBoard'
 import TexasIncidents from './components/TexasIncidents'
 
+const SUPABASE_URL = 'https://stxanozxvkerwfvbruzr.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0eGFub3p4dmtlcndmdmJydXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODQzMzMsImV4cCI6MjA5MDQ2MDMzM30.Re9XtQo5SoeqJIOxjXiomDsXXLR19qGQmiXYUAH3PBc'
+const OPENSKY_API = `${SUPABASE_URL}/functions/v1/flights`
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 // ─── Types ────────────────────────────────────────────
@@ -138,6 +141,19 @@ export default function App() {
   const [liveCount, setLiveCount] = useState(0)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
+  // ─── Live flights via Supabase Edge Function ───────────────────────
+  const fetchFlights = async () => {
+    const r = await fetch(OPENSKY_API, {
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      }
+    })
+    if (!r.ok) throw new Error(`Flights error: ${r.status}`)
+    return r.json()
+  }
+
   // ─── Live flights polling ───────────────────────
   useEffect(() => {
     if (tab !== 'flights') return
@@ -146,9 +162,7 @@ export default function App() {
       setError(null)
       setLoading(true)
       try {
-        const r = await fetch(`${API}/api/flights`)
-        if (!r.ok) throw new Error(`Flights API error: ${r.status}`)
-        const d = await r.json()
+        const d = await fetchFlights()
         if (!cancelled) {
           setFlights(d.flights || [])
           setLiveCount(d.total || 0)
@@ -162,9 +176,7 @@ export default function App() {
     })()
     const pollId = setInterval(async () => {
       try {
-        const r = await fetch(`${API}/api/flights`)
-        if (!r.ok) throw new Error(`Poll error: ${r.status}`)
-        const d = await r.json()
+        const d = await fetchFlights()
         if (!cancelled) {
           setFlights(d.flights || [])
           setLiveCount(d.total || 0)
