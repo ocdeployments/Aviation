@@ -1,13 +1,14 @@
 import express from 'express'
 import cors from 'cors'
 import { createClient } from '@supabase/supabase-js'
+import { INCIDENTS } from './data/incidents.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
 
-// Supabase client
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!
+// Supabase client (for flights storage)
+const supabaseUrl = process.env.SUPABASE_URL || 'https://stxanozxvkerwfvbruzr.supabase.co'
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0eGFub3p4dmtlcndmdmJydXpyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDg4NDMzMywiZXhwIjoyMDkwNDYwMzMzfQ.a3STl9xBvp8kNMn5nN4p5l2gfTdK3Qg8y0Qj5JHFvxc'
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 app.use(cors())
@@ -19,14 +20,12 @@ app.get('/api/health', (_req, res) => {
 })
 
 // ─── Flights: Live from OpenSky Network (free, no API key) ────────────────
-// OpenSky Network API: https://opensky-network.org/api
 app.get('/api/flights', async (req, res) => {
   try {
     const { lat, lon, dist_km } = req.query
     let url = 'https://opensky-network.org/api/states/all'
 
     if (lat && lon && dist_km) {
-      // Bounding box for area search
       const km = Number(dist_km)
       const latOffset = km / 111
       const lonOffset = km / (111 * Math.cos(Number(lat) * Math.PI / 180))
@@ -44,34 +43,38 @@ app.get('/api/flights', async (req, res) => {
     if (!response.ok) throw new Error(`OpenSky error: ${response.status}`)
 
     const data = await response.json() as {
-      states: Array<[string, string, string, string, number, number, number, boolean, number, number, number, string] | null>[]
+      states: Array<[string, string, string, number | null, number | null, number | null, number | null, number | null, boolean, number | null, number | null, number | null, unknown, number | null, string | null, boolean, number] | null>[]
     }
 
     const flights = (data.states || [])
-      .filter(Boolean)
-      .map((state) => {
-        // OpenSky returns 17-element arrays: icao24, callsign, origin_country,
-        // time_position, last_contact, lon, lat, baro_altitude, on_ground,
-        // velocity, true_track, vertical_rate, sensors, geo_altitude, squawk, spi, position_source
-        const s = state as [string, string, string, number | null, number | null,
-          number | null, number | null, number | null, boolean, number | null,
-          number | null, number | null, number[] | null, number | null,
-          string | null, boolean, number]
+      .filter((s): s is NonNullable<typeof s> => s !== null)
+      .map((s) => {
+        const icao24 = String(s[0])
+        const callsign = String(s[1]).trim()
+        const origin_country = String(s[2])
+        const lon = s[5] as number | null
+        const lat = s[6] as number | null
+        const baro_altitude = s[7] as number | null
+        const on_ground = Boolean(s[8])
+        const velocity = s[9] as number | null
+        const true_track = s[10] as number | null
+        const vertical_rate = s[11] as number | null
+        const last_contact = (s[4] as number | null) ?? 0
         return {
-          icao24: s[0],
-          callsign: s[1].trim(),
-          origin_country: s[2],
-          latitude: s[6],
-          longitude: s[5],
-          baro_altitude: s[7] ? Math.round(s[7]) : null,
-          on_ground: s[8],
-          velocity: s[9] ? Math.round(s[9] * 3.6) : null,
-          true_track: s[10] ? Math.round(s[10]) : null,
-          vertical_rate: s[11] ? Math.round(s[11]) : null,
-          last_contact: s[4] ?? 0,
-        } as FlightState
+          icao24,
+          callsign,
+          origin_country,
+          latitude: lat,
+          longitude: lon,
+          baro_altitude: baro_altitude !== null ? Math.round(baro_altitude) : null,
+          on_ground,
+          velocity: velocity !== null ? Math.round(velocity * 3.6) : null,
+          true_track: true_track !== null ? Math.round(true_track) : null,
+          vertical_rate: vertical_rate !== null ? Math.round(vertical_rate) : null,
+          last_contact,
+        }
       })
-      .filter(f => f.callsign && f.callsign.length > 3)
+      .filter(f => f.callsign.length > 3)
 
     res.json({ total: flights.length, flights: flights.slice(0, 100) })
   } catch (err) {
@@ -80,96 +83,67 @@ app.get('/api/flights', async (req, res) => {
   }
 })
 
-// ─── Flights by callsign ────────────────────────────────────────────────────
-interface FlightState {
-  icao24: string
-  callsign: string
-  origin_country: string
-  latitude: number | null
-  longitude: number | null
-  baro_altitude: number | null
-  on_ground: boolean
-  velocity: number | null
-  true_track: number | null
-  vertical_rate: number | null
-  last_contact: number
-}
-
-app.get('/api/flights/search', async (req: { query: { q: unknown } }, res) => {
-  try {
-    const { q } = req.query
-    if (!q || String(q).length < 3) {
-      return res.status(400).json({ error: 'Query too short' })
-    }
-
-    const response = await fetch(
-      'https://opensky-network.org/api/flights/callsign?' +
-      new URLSearchParams({ callsign: String(q).toUpperCase() }),
-      { headers: { 'User-Agent': 'AviationHub/1.0' } }
-    )
-
-    if (!response.ok) throw new Error(`OpenSky error: ${response.status}`)
-    const data = await response.json()
-    res.json({ results: Array.isArray(data) ? data : [] })
-  } catch (err) {
-    console.error('Flight search error:', err)
-    res.status(500).json({ error: 'Failed to search flights' })
-  }
-})
-
-// ─── Airports from Supabase ────────────────────────────────────────────────
+// ─── Airports: Public GitHub dataset ───────────────────────────────────────
 app.get('/api/airports', async (req, res) => {
   try {
     const { q, limit = '20' } = req.query
-    let query = supabase
-      .from('airports')
-      .select('*')
-      .order('type')
-      .limit(Number(limit))
+    const url = 'https://raw.githubusercontent.com/mwgg/Airports/master/airports.json'
+
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    if (!response.ok) throw new Error(`Airports API error: ${response.status}`)
+
+    const allAirports: Record<string, {
+      icao: string, iata: string, name: string, city: string,
+      state: string, country: string, elevation: number, lat: number, lon: number
+    }> = await response.json() as Record<string, {
+      icao: string, iata: string, name: string, city: string,
+      state: string, country: string, elevation: number, lat: number, lon: number
+    }>
+
+    let results = Object.values(allAirports).map(a => ({
+      id: a.icao,
+      ident: a.icao,
+      type: 'airport',
+      name: a.name,
+      elevation_ft: a.elevation,
+      continent: 'NA',
+      country: a.country,
+      region: a.state || '',
+      municipality: a.city || '',
+      latitude: a.lat,
+      longitude: a.lon,
+    }))
 
     if (q) {
-      query = query.ilike('name', `%${q}%`)
+      const qLower = String(q).toLowerCase()
+      results = results.filter(a =>
+        a.name.toLowerCase().includes(qLower) ||
+        a.ident.toLowerCase().includes(qLower) ||
+        a.municipality.toLowerCase().includes(qLower) ||
+        a.country.toLowerCase().includes(qLower)
+      )
     }
 
-    const { data, error } = await query
-    if (error) throw error
-    res.json({ airports: data || [] })
+    res.json({ airports: results.slice(0, Number(limit)) })
   } catch (err) {
     console.error('Airports error:', err)
     res.status(500).json({ error: 'Failed to fetch airports' })
   }
 })
 
-// ─── Incidents from FAA API (free) ─────────────────────────────────────────
-app.get('/api/incidents', async (req, res) => {
-  try {
-    // FAA Bird Strike database - public CSV endpoint
-    const url = 'https://data.transportation.gov/api/views/k2ns-n3x5/rows.csv?accessType=DOWNLOAD'
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`FAA API error: ${response.status}`)
-
-    const text = await response.text()
-    const lines = text.split('\n').slice(1, 51) // first 50 rows
-    const incidents = lines.map(line => {
-      const [airport, date, operator, aircraft, species, damage] = line.split(',')
-      return { airport, date, operator, aircraft, species, damage }
-    }).filter(i => i.airport)
-
-    res.json({ total: incidents.length, incidents })
-  } catch (err) {
-    console.error('Incidents error:', err)
-    res.status(500).json({ error: 'Failed to fetch incidents' })
-  }
+// ─── Incidents: FAA Wildlife Strikes (static dataset) ──────────────────
+app.get('/api/incidents', async (_req, res) => {
+  res.json({ total: INCIDENTS.length, incidents: INCIDENTS })
 })
 
 // ─── Aircraft details by ICAO24 ────────────────────────────────────────────
-app.get('/api/aircraft/:icao24', async (req: { params: { icao24: string } }, res) => {
+app.get('/api/aircraft/:icao24', async (req, res) => {
   try {
     const { icao24 } = req.params
-    // OpenSky owns the ICAO24 database
+    const now = Math.floor(Date.now() / 1000)
     const response = await fetch(
-      `https://opensky-network.org/api/flights/aircraft?icao24=${icao24}&begin=${Date.now() / 1000 - 86400}&end=${Date.now() / 1000}`,
-      { headers: { 'User-Agent': 'AviationHub/1.0' } }
+      `https://opensky-network.org/api/flights/aircraft?icao24=${icao24}&begin=${now - 86400}&end=${now}`,
+      { headers: { 'User-Agent': 'AviationHub/1.0' }, signal: AbortSignal.timeout(10000) }
     )
     if (!response.ok) throw new Error(`OpenSky error: ${response.status}`)
     const data = await response.json()
@@ -182,5 +156,4 @@ app.get('/api/aircraft/:icao24', async (req: { params: { icao24: string } }, res
 
 app.listen(PORT, () => {
   console.log(`Aviation backend running on http://localhost:${PORT}`)
-  console.log(`Supabase: ${supabaseUrl}`)
 })
