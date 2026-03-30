@@ -7,6 +7,7 @@ import Reports from './pages/Reports'
 import ReportDetail from './pages/ReportDetail'
 import Submit from './pages/Submit'
 import FlightLog from './pages/FlightLog'
+import Newsletter from './pages/Newsletter'
 
 function Nav() {
   return (
@@ -16,6 +17,7 @@ function Nav() {
         <div className="flex gap-4 text-sm">
           <Link to="/reports" className="text-slate-300 hover:text-white transition">Trip Reports</Link>
           <Link to="/flight-log" className="text-slate-300 hover:text-white transition">Flight Log</Link>
+          <Link to="/newsletter" className="text-slate-300 hover:text-white transition">Newsletter</Link>
           <Link to="/submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg font-medium transition">Submit Report</Link>
         </div>
       </div>
@@ -34,6 +36,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/reports/:slug" element={<ReportDetail />} />
           <Route path="/submit" element={<Submit />} />
           <Route path="/flight-log" element={<FlightLog />} />
+          <Route path="/newsletter" element={<Newsletter />} />
         </Routes>
         <footer className="border-t border-slate-800 mt-16 py-8 text-center text-slate-500 text-sm">
           AviationHub Community · Powered by OpenSky Network · $0 hosting

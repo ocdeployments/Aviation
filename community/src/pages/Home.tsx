@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { TripReport } from '../types'
+import { NewsletterForm } from '../../../newsletter/NewsletterForm'
 
 const CABIN_COLORS: Record<string, string> = {
   'First': 'bg-yellow-900 text-yellow-300',
@@ -92,10 +93,7 @@ export default function Home() {
       <div className="mt-16 bg-gradient-to-r from-blue-900 to-slate-800 rounded-2xl p-8 text-center border border-blue-700">
         <h2 className="text-2xl font-bold mb-3">The Wing — Weekly Aviation Digest</h2>
         <p className="text-slate-300 mb-6">The best trip reports, fare alerts, and aviation news. Every Wednesday. Free.</p>
-        <form className="flex gap-3 justify-center max-w-md mx-auto" onSubmit={e => e.preventDefault()}>
-          <input type="email" placeholder="your@email.com" className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
-          <button type="submit" className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded-lg font-medium transition">Subscribe</button>
-        </form>
+        <NewsletterForm className="max-w-md mx-auto" />
       </div>
     </div>
   )
