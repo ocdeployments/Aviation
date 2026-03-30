@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Globe from './components/Globe'
 import DepartureBoard from './components/DepartureBoard'
-import TexasIncidents from './components/TexasIncidents'
+
 
 const SUPABASE_URL = 'https://stxanozxvkerwfvbruzr.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0eGFub3p4dmtlcndmdmJydXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODQzMzMsImV4cCI6MjA5MDQ2MDMzM30.Re9XtQo5SoeqJIOxjXiomDsXXLR19qGQmiXYUAH3PBc'
@@ -45,7 +45,7 @@ interface Incident {
   damage: string
 }
 
-type Tab = 'flights' | 'airports' | 'incidents' | 'globe' | 'departures' | 'texas'
+type Tab = 'flights' | 'airports' | 'incidents' | 'globe' | 'departures'
 
 // ─── Page Transition Wrapper ─────────────────────────
 function PageWrapper({ children, keyValue }: { children: ReactNode; keyValue: string }) {
@@ -248,7 +248,6 @@ export default function App() {
     { id: 'incidents',  label: '⚠️ Incidents' },
     { id: 'globe',      label: '🌍 Globe' },
     { id: 'departures', label: '📋 Departures' },
-    { id: 'texas',      label: '🤠 Texas' },
   ]
 
   return (
@@ -301,13 +300,6 @@ export default function App() {
             {tab === 'departures' && (
               <PageWrapper keyValue="departures">
                 <DepartureBoard />
-              </PageWrapper>
-            )}
-
-            {/* ── Texas Tab ───────────────────────── */}
-            {tab === 'texas' && (
-              <PageWrapper keyValue="texas">
-                <TexasIncidents />
               </PageWrapper>
             )}
 
