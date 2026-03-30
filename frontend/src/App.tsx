@@ -7,7 +7,8 @@ import DepartureBoard from './components/DepartureBoard'
 const SUPABASE_URL = 'https://stxanozxvkerwfvbruzr.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0eGFub3p4dmtlcndmdmJydXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODQzMzMsImV4cCI6MjA5MDQ2MDMzM30.Re9XtQo5SoeqJIOxjXiomDsXXLR19qGQmiXYUAH3PBc'
 const OPENSKY_API = `${SUPABASE_URL}/functions/v1/flights`
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const AIRPORTS_API = `${SUPABASE_URL}/functions/v1/airports`
+const INCIDENTS_API = `${SUPABASE_URL}/functions/v1/incidents`
 
 // ─── Types ────────────────────────────────────────────
 interface Flight {
@@ -192,17 +193,13 @@ export default function App() {
   const searchFlights = async () => {
     if (!flightSearch) return
     setError(null)
-    setLoading(true)
-    try {
-      const r = await fetch(`${API}/api/flights/search?q=${encodeURIComponent(flightSearch)}`)
-      if (!r.ok) throw new Error(`Search failed: ${r.status}`)
-      const d = await r.json()
-      setFlights(d.results || [])
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Search failed')
-    } finally {
-      setLoading(false)
-    }
+    // Filter currently loaded flights client-side by callsign
+    const q = flightSearch.toUpperCase()
+    const filtered = flights.filter(f =>
+      (f.callsign || '').toUpperCase().includes(q) ||
+      (f.origin_country || '').toUpperCase().includes(q)
+    )
+    setFlights(filtered.length > 0 ? filtered : flights)
   }
 
   const loadAirports = async () => {
@@ -210,9 +207,15 @@ export default function App() {
     setLoading(true)
     try {
       const url = airportSearch
-        ? `${API}/api/airports?q=${encodeURIComponent(airportSearch)}`
-        : `${API}/api/airports?limit=30`
-      const r = await fetch(url)
+        ? `${AIRPORTS_API}?q=${encodeURIComponent(airportSearch)}&limit=30`
+        : `${AIRPORTS_API}?limit=30`
+      const r = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        }
+      })
       if (!r.ok) throw new Error(`Airports error: ${r.status}`)
       const d = await r.json()
       setAirports(d.airports || [])
@@ -228,7 +231,13 @@ export default function App() {
     setError(null)
     setLoading(true)
     try {
-      const r = await fetch(`${API}/api/incidents`)
+      const r = await fetch(INCIDENTS_API, {
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        }
+      })
       if (!r.ok) throw new Error(`Incidents error: ${r.status}`)
       const d = await r.json()
       setIncidents(d.incidents || [])

@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const SUPABASE_URL = 'https://stxanozxvkerwfvbruzr.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0eGFub3p4dmtlcndmdmJydXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4ODQzMzMsImV4cCI6MjA5MDQ2MDMzM30.Re9XtQo5SoeqJIOxjXiomDsXXLR19qGQmiXYUAH3PBc'
+const INCIDENTS_API = `${SUPABASE_URL}/functions/v1/incidents`
 
 interface IncidentMarker {
   airport: string
@@ -89,7 +91,13 @@ export default function GlobalHeatmap() {
   useEffect(() => {
     ;(async () => {
       try {
-        const r = await fetch(`${API}/api/incidents`)
+        const r = await fetch(INCIDENTS_API, {
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          }
+        })
         const d = await r.json()
         const raw = d.incidents || []
 

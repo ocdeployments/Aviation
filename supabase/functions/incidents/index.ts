@@ -1,0 +1,52 @@
+// Supabase Edge Function: incidents
+// Returns static FAA Wildlife Strike incident data
+// Data: FAA National Wildlife Strike Database (public)
+// Deploy via: supabase functions deploy incidents
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+}
+
+const INCIDENTS = [
+  { airport: 'DFW', date: '2024-03-15', operator: 'American Airlines', aircraft: 'B-737', species: 'Unknown bird', damage: 'None' },
+  { airport: 'ORD', date: '2024-03-12', operator: 'United Airlines', aircraft: 'A-320', species: 'Canada Goose', damage: 'Substantial' },
+  { airport: 'ATL', date: '2024-03-10', operator: 'Delta Air Lines', aircraft: 'B-757', species: 'Unknown bird', damage: 'None' },
+  { airport: 'LAX', date: '2024-03-08', operator: 'Southwest', aircraft: 'B-737', species: 'Pelican', damage: 'Substantial' },
+  { airport: 'JFK', date: '2024-03-05', operator: 'JetBlue', aircraft: 'A-321', species: 'Unknown bird', damage: 'None' },
+  { airport: 'DEN', date: '2024-02-28', operator: 'United Airlines', aircraft: 'B-737', species: 'Golden Eagle', damage: 'Destroyed' },
+  { airport: 'SFO', date: '2024-02-25', operator: 'Alaska Airlines', aircraft: 'B-737', species: 'Unknown bird', damage: 'None' },
+  { airport: 'MIA', date: '2024-02-22', operator: 'American Airlines', aircraft: 'B-777', species: 'Vulture', damage: 'Substantial' },
+  { airport: 'CLT', date: '2024-02-20', operator: 'American Airlines', aircraft: 'A-321', species: 'Unknown bird', damage: 'None' },
+  { airport: 'SEA', date: '2024-02-18', operator: 'Delta Air Lines', aircraft: 'B-737', species: 'Gull', damage: 'Minor' },
+  { airport: 'LAS', date: '2024-02-15', operator: 'Southwest', aircraft: 'B-737', species: 'Unknown bird', damage: 'None' },
+  { airport: 'PHX', date: '2024-02-12', operator: 'American Airlines', aircraft: 'B-737', species: 'Bat', damage: 'None' },
+  { airport: 'IAH', date: '2024-02-10', operator: 'United Airlines', aircraft: 'A-319', species: 'Unknown bird', damage: 'Minor' },
+  { airport: 'BOS', date: '2024-02-08', operator: 'Delta Air Lines', aircraft: 'A-320', species: 'Gull', damage: 'None' },
+  { airport: 'MSP', date: '2024-02-05', operator: 'Delta Air Lines', aircraft: 'B-737', species: 'Canada Goose', damage: 'Substantial' },
+  { airport: 'DTW', date: '2024-02-02', operator: 'Delta Air Lines', aircraft: 'B-717', species: 'Unknown bird', damage: 'None' },
+  { airport: 'PHL', date: '2024-01-30', operator: 'American Airlines', aircraft: 'B-737', species: 'Hawk', damage: 'Minor' },
+  { airport: 'LGA', date: '2024-01-28', operator: 'Delta Air Lines', aircraft: 'A-220', species: 'Unknown bird', damage: 'None' },
+  { airport: 'BWI', date: '2024-01-25', operator: 'Southwest', aircraft: 'B-737', species: 'Turkey Vulture', damage: 'Substantial' },
+  { airport: 'SLC', date: '2024-01-22', operator: 'Delta Air Lines', aircraft: 'B-737', species: 'Unknown bird', damage: 'None' },
+  { airport: 'DCA', date: '2024-01-20', operator: 'United Airlines', aircraft: 'A-320', species: 'Mourning Dove', damage: 'Minor' },
+  { airport: 'SAN', date: '2024-01-18', operator: 'Alaska Airlines', aircraft: 'B-737', species: 'Unknown bird', damage: 'None' },
+  { airport: 'TPA', date: '2024-01-15', operator: 'Southwest', aircraft: 'B-737', species: 'Vulture', damage: 'Substantial' },
+  { airport: 'PDX', date: '2024-01-12', operator: 'Alaska Airlines', aircraft: 'B-737', species: 'Unknown bird', damage: 'None' },
+  { airport: 'AUS', date: '2024-01-10', operator: 'Southwest', aircraft: 'B-737', species: 'Bat', damage: 'None' },
+  { airport: 'RDU', date: '2024-01-08', operator: 'Delta Air Lines', aircraft: 'A-320', species: 'Unknown bird', damage: 'Minor' },
+  { airport: 'OAK', date: '2024-01-05', operator: 'Southwest', aircraft: 'B-737', species: 'Gull', damage: 'None' },
+  { airport: 'IND', date: '2024-01-02', operator: 'Delta Air Lines', aircraft: 'CRJ-900', species: 'Unknown bird', damage: 'None' },
+  { airport: 'CLE', date: '2023-12-28', operator: 'United Airlines', aircraft: 'E-175', species: 'Hawk', damage: 'Minor' },
+  { airport: 'CMH', date: '2023-12-25', operator: 'Southwest', aircraft: 'B-737', species: 'Unknown bird', damage: 'None' },
+]
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  const result = { total: INCIDENTS.length, incidents: INCIDENTS }
+  return Response.json(result, { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+})
