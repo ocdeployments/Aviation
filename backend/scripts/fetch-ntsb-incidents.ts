@@ -177,67 +177,7 @@ async function fetchAndMapNtsb(): Promise<Incident[]> {
 // These are based on publicly-reported NTSB/FAA incidents from 2023-2025.
 // Sources: NTSB accident database, FAA wildlife strike reports, aviation news.
 async function fetchFallbackData(): Promise<Incident[]> {
-  console.log('\n📂 Using fallback dataset (realistic 2023-2025 US aviation incidents)')
-
-  // FAA Wildlife Strike Database — publicly accessible CSV
-  const FAA_CSV = 'https://jsvine.github.io/intro-to-visidata/_downloads/a61d9b28e9a942e1254bffeb8289a447/faa-wildlife-strikes.csv'
-  try {
-    const res = await fetch(FAA_CSV, { signal: AbortSignal.timeout(15_000) })
-    if (res.ok) {
-      const text = stripBom(await res.text())
-      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0)
-      const header = parseCsvLine(lines[0])
-      const headerIdx: Record<string, number> = {}
-      header.forEach((col, i) => { headerIdx[col] = i })
-
-      const faaData: Incident[] = []
-      for (const rawLine of lines.slice(1)) {
-        const row = parseCsvLine(rawLine)
-        const idx = (key: string) => (headerIdx[key] ?? -1) as number
-        const cell = (key: string) => row[idx(key)] || ''
-
-        const dateStr = String(cell('INCIDENT_DATE')).trim()
-        const dateMatch = dateStr.match(/(\d{2})\/(\d{2})\/(\d{2})/)
-        const year = dateMatch ? `20${dateMatch[3]}` : ''
-        const date = dateMatch
-          ? `20${dateMatch[3]}-${dateMatch[1].padStart(2,'0')}-${dateMatch[2].padStart(2,'0')}`
-          : '2024-01-01'
-
-        const operator = String(cell('OPERATOR') || 'Unknown').trim()
-        const aircraft = String(cell('ATYPE') || '').trim()
-        const airport = String(cell('AIRPORT') || '').trim()
-        const phase = String(cell('PHASE_OF_FLT') || '').trim()
-        const species = String(cell('SPECIES') || 'Unknown').trim()
-        const damage = String(cell('DAMAGE') || 'None').trim()
-        const remarks = String(cell('REMARKS') || '').trim()
-
-        const id = `faa-${operator.replace(/[^a-z0-9]/gi,'-').toLowerCase().slice(0,20)}-${date.replace(/-/g,'')}`
-        if (!operator || operator === 'Unknown') continue
-
-        faaData.push({
-          id,
-          type: 'Wildlife Strike',
-          date,
-          flight: '',
-          airline: operator,
-          aircraft,
-          fatalities: 0,
-          route: airport,
-          summary: `${phase ? `Phase: ${phase}. ` : ''}Struck: ${species}. Damage: ${damage}. ${remarks.slice(0, 300)}`,
-          severity: damage === 'Destroyed' ? 'Serious' : damage === 'Substantial' ? 'Serious' : 'Minor',
-          source: 'FAA Wildlife Strike Database',
-          status: 'published',
-        })
-      }
-      console.log(`  Loaded ${faaData.length} FAA wildlife strike records`)
-      if (faaData.length > 0) return faaData
-    }
-  } catch (e) {
-    console.warn('  FAA CSV unavailable:', String(e))
-  }
-
-  // Hardcoded realistic 2023-2025 incidents based on publicly known events
-  console.log('  Using embedded realistic incident dataset')
+  console.log('\n📂 Using embedded dataset (35 well-documented 2023-2025 US aviation incidents)')
   return getHardcodedIncidents()
 }
 
@@ -322,19 +262,33 @@ async function upsertIncidents(incidents: Incident[]): Promise<void> {
     return
   }
 
-  // Upsert in batches of 100
+  // Insert in batches (deduplicated within each batch to avoid "row affected twice" error)
   let upserted = 0
-  for (let i = 0; i < newIncidents.length; i += 100) {
-    const batch = newIncidents.slice(i, i + 100)
+  const batchSize = 100
+  for (let i = 0; i < newIncidents.length; i += batchSize) {
+    const batch = newIncidents.slice(i, i + batchSize)
+    // Deduplicate within batch
+    const seen = new Set<string>()
+    const deduped = batch.filter(r => {
+      if (seen.has(r.id)) return false
+      seen.add(r.id); return true
+    })
     const { error: upsertErr } = await supabase
       .from('incidents')
-      .upsert(batch, { onConflict: 'id' })
+      .upsert(deduped, { onConflict: 'id' })
 
     if (upsertErr) {
-      console.warn(`  Warning batch ${i}-${i+100}: ${upsertErr.message}`)
+      // Fallback: individual inserts with DO NOTHING
+      let inserted = 0
+      for (const incident of deduped) {
+        const { error } = await supabase.from('incidents').insert([incident], { onConflict: 'id' })
+        if (!error) inserted++
+      }
+      upserted += inserted
     } else {
-      upserted += batch.length
+      upserted += deduped.length
     }
+    process.stdout.write(`.${i + batchSize}`)
   }
 
   console.log(`\n✅ Upserted ${upserted} incidents. Sample:`)
