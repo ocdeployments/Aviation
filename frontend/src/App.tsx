@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Globe from './components/Globe'
 import DepartureBoard from './components/DepartureBoard'
 import AirportDetail from './components/AirportDetail'
+import Landing from './pages/Landing'
 
 
 const SUPABASE_URL = 'https://stxanozxvkerwfvbruzr.supabase.co'
@@ -47,7 +48,7 @@ interface Incident {
   damage: string
 }
 
-type Tab = 'flights' | 'airports' | 'incidents' | 'globe' | 'departures'
+type Tab = 'home' | 'flights' | 'airports' | 'incidents' | 'globe' | 'departures'
 
 // ─── Page Transition Wrapper ─────────────────────────
 function PageWrapper({ children, keyValue }: { children: ReactNode; keyValue: string }) {
@@ -132,7 +133,7 @@ function TabBtn({ label, active, onClick }: {
 
 // ─── Main App ─────────────────────────────────────────
 export default function App() {
-  const [tab, setTab] = useState<Tab>('flights')
+  const [tab, setTab] = useState<Tab>('home')
   const [flights, setFlights] = useState<Flight[]>([])
   const [airports, setAirports] = useState<Airport[]>([])
   const [incidents, setIncidents] = useState<Incident[]>([])
@@ -256,6 +257,7 @@ export default function App() {
   useEffect(() => { if (tab === 'incidents') loadIncidents() }, [tab])
 
   const tabs: Array<{ id: Tab; label: string }> = [
+    { id: 'home',       label: '🏠 Home' },
     { id: 'flights',    label: '🛫 Flights' },
     { id: 'airports',   label: '🛬 Airports' },
     { id: 'incidents',  label: '⚠️ Incidents' },
@@ -313,6 +315,13 @@ export default function App() {
             {tab === 'departures' && (
               <PageWrapper keyValue="departures">
                 <DepartureBoard />
+              </PageWrapper>
+            )}
+
+            {/* ── Home Tab ────────────────────────── */}
+            {tab === 'home' && (
+              <PageWrapper keyValue="home">
+                <Landing />
               </PageWrapper>
             )}
 
