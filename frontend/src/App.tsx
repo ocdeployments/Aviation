@@ -148,7 +148,7 @@ export default function App() {
             <h1 className="text-2xl font-bold text-blue-400">✈️ AviationHub</h1>
             <p className="text-xs text-slate-400">Free flight tracking · $0 cost</p>
           </div>
-          <nav className="flex gap-1 flex-wrap">
+          <nav className="flex items-center gap-1 flex-wrap">
             {tabs.map(t => (
               <button key={t.id}
                 onClick={() => setTab(t.id)}
@@ -157,6 +157,9 @@ export default function App() {
                 {t.label}
               </button>
             ))}
+            <div className="w-px h-6 bg-slate-600 mx-1"></div>
+            <a href="/Aviation/community/" className="px-3 py-2 rounded-lg text-sm font-medium bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white transition">📝 Community</a>
+            <a href="/Aviation/community/#/reports" className="px-3 py-2 rounded-lg text-sm font-medium bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white transition">✈️ Trip Reports</a>
           </nav>
         </div>
       </header>
