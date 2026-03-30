@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import GlobalHeatmap from './components/GlobalHeatmap'
+import TexasIncidents from './components/TexasIncidents'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
@@ -37,7 +39,7 @@ interface Incident {
   damage: string
 }
 
-type Tab = 'flights' | 'airports' | 'incidents'
+type Tab = 'flights' | 'airports' | 'incidents' | 'global-map' | 'texas'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('flights')
@@ -115,6 +117,14 @@ export default function App() {
   useEffect(() => { if (tab === 'airports') loadAirports() }, [tab, airportSearch])
   useEffect(() => { if (tab === 'incidents') loadIncidents() }, [tab])
 
+  const tabs: Array<{ id: Tab; label: string }> = [
+    { id: 'flights', label: '🛫 Flights' },
+    { id: 'airports', label: '🛬 Airports' },
+    { id: 'incidents', label: '⚠️ Incidents' },
+    { id: 'global-map', label: '🌍 Global Map' },
+    { id: 'texas', label: '🤠 Texas' },
+  ]
+
   return (
     <div className="min-h-screen bg-slate-900 text-white">
       {/* Header */}
@@ -124,13 +134,13 @@ export default function App() {
             <h1 className="text-2xl font-bold text-blue-400">✈️ AviationHub</h1>
             <p className="text-xs text-slate-400">Free flight tracking · $0 cost</p>
           </div>
-          <nav className="flex gap-1">
-            {(['flights', 'airports', 'incidents'] as Tab[]).map(t => (
-              <button key={t}
-                onClick={() => setTab(t)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === t ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}
+          <nav className="flex gap-1 flex-wrap">
+            {tabs.map(t => (
+              <button key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition ${tab === t.id ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}
               >
-                {t === 'flights' ? '🛫 Flights' : t === 'airports' ? '🛬 Airports' : '⚠️ Incidents'}
+                {t.label}
               </button>
             ))}
           </nav>
@@ -138,6 +148,12 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6">
+        {/* Global Map tab */}
+        {tab === 'global-map' && <GlobalHeatmap />}
+
+        {/* Texas tab */}
+        {tab === 'texas' && <TexasIncidents />}
+
         {/* Live Stats Bar */}
         {tab === 'flights' && (
           <div className="mb-6 flex items-center gap-4 flex-wrap">
@@ -212,7 +228,7 @@ export default function App() {
                       <td className="px-4 py-3 text-right font-mono text-slate-300">{f.baro_altitude?.toLocaleString() ?? '—'}</td>
                       <td className="px-4 py-3 text-right font-mono text-slate-300">{f.velocity ?? '—'}</td>
                       <td className="px-4 py-3 text-right font-mono text-slate-300">{f.true_track ?? '—'}°</td>
-                      <td className="px-4 py-3 text-center">{f.on_ground ? '✕' : '✕'}</td>
+                      <td className="px-4 py-3 text-center">{f.on_ground ? '✕' : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
