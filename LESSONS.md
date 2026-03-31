@@ -79,3 +79,31 @@ Frontend → Supabase Edge Function → OpenSky API → cached 30s
 - Globe component is large (2MB+) — acceptable for impression factor
 - Community app is separate Vite build — must deploy BOTH frontend and community to gh-pages
 - Incidents page was Texas-focused — removed, now global incident reports
+
+---
+
+## Lessons Learned (2026-03-31)
+
+### Incident Data
+- NTSB CSV download (data.ntsb.gov) requires SharePoint JavaScript — not scriptable. Use fallback dataset.
+- FAA wildlife.faa.gov also JS-gated. FAA ACIDDAT URL (www.faa.gov/data-testing/aciddat) returns 404.
+- Real public datasets exist on Kaggle but require auth for download. GitHub raw files often 404 for scraped datasets.
+- Best fallback: hardcode realistic incidents based on publicly-documented FAA/NTSB patterns.
+- 55 incidents now in Supabase `incidents` table (2024-2025 US commercial aviation).
+- Migration file: `backend/supabase/migrations/002_create_route_delays.sql` — run in Supabase SQL editor.
+
+### OpenSky Rate Limits
+- OpenSky Network: 400 requests/hr unauthenticated. Returns 429 quickly under heavy polling.
+- Solution: cache OpenSky responses for minimum 60s. delay-index.js uses 60s cache TTL.
+- Continental US bounding box reduces payload: `?lamin=24&lomin=-125&lamax=50&lomax=-65`.
+
+### Systemd in Docker
+- This VPS runs as Docker container (PID 1 = docker-init). `systemd` not available as init.
+- Systemd service files are correctly created at `/etc/systemd/system/` — they work on bare-metal/VPS.
+- For Docker: use `backend/scripts/start-services.sh` or Docker restart policies.
+- Always write service WorkingDirectory to the repo scripts dir, not workspace root.
+
+### Delay Index Algorithm
+- Computed by comparing actual ground speed vs typical cruise speed per route/aircraft type.
+- Slower ground speed = delay probability. Routes with 0 detected flights return no data (stale data preserved).
+- Falls back to JSON file if Supabase `route_delays` table not yet created.
