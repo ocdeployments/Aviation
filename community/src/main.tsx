@@ -16,7 +16,9 @@ function Nav() {
   return (
     <nav className="bg-slate-800 border-b border-slate-700 sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="text-lg font-bold text-blue-400">✈️ AviationHub</Link>
+        <div className="flex items-center gap-4">
+          <a href="/" className="text-lg font-bold text-blue-400 hover:text-blue-300 transition flex items-center gap-1">← Back to AviationHub</a>
+        </div>
         <div className="flex gap-4 text-sm">
           <Link to="/reports" className="text-slate-300 hover:text-white transition">Trip Reports</Link>
           <Link to="/flight-log" className="text-slate-300 hover:text-white transition">Flight Log</Link>
